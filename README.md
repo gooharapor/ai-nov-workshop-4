@@ -42,11 +42,13 @@ A clean and scalable REST API built with Go, Fiber framework, and GORM ORM for m
 ## 🔧 Installation
 
 1. Install dependencies:
+
 ```bash
 go mod download
 ```
 
 2. Run the application:
+
 ```bash
 go run main.go
 ```
@@ -56,9 +58,11 @@ Server will start on `http://localhost:3000`
 ## 📡 API Endpoints
 
 ### Root
+
 - `GET /` - Hello world endpoint
 
 ### Users
+
 - `GET /users` - Get all users
 - `GET /users/:id` - Get user by ID
 - `POST /users` - Create new user
@@ -68,16 +72,19 @@ Server will start on `http://localhost:3000`
 ## 📝 API Examples
 
 ### Get all users
+
 ```bash
 curl http://localhost:3000/users
 ```
 
 ### Get user by ID
+
 ```bash
 curl http://localhost:3000/users/1
 ```
 
 ### Create user
+
 ```bash
 curl -X POST http://localhost:3000/users \
   -H "Content-Type: application/json" \
@@ -91,6 +98,7 @@ curl -X POST http://localhost:3000/users \
 ```
 
 ### Update user
+
 ```bash
 curl -X PUT http://localhost:3000/users/1 \
   -H "Content-Type: application/json" \
@@ -104,6 +112,7 @@ curl -X PUT http://localhost:3000/users/1 \
 ```
 
 ### Delete user
+
 ```bash
 curl -X DELETE http://localhost:3000/users/1
 ```
@@ -111,17 +120,18 @@ curl -X DELETE http://localhost:3000/users/1
 ## 🗃️ Database Schema
 
 ### Users Table
-| Field | Type | Description |
-|-------|------|-------------|
-| id | INTEGER | Primary key (auto-increment) |
-| name | TEXT | User's full name (required) |
-| email | TEXT | User's email (unique, required) |
-| phone | TEXT | Phone number |
-| address | TEXT | Address |
-| avatar | TEXT | Avatar/profile image URL |
-| created_at | DATETIME | Timestamp of creation |
-| updated_at | DATETIME | Timestamp of last update |
-| deleted_at | DATETIME | Soft delete timestamp |
+
+| Field      | Type     | Description                     |
+| ---------- | -------- | ------------------------------- |
+| id         | INTEGER  | Primary key (auto-increment)    |
+| name       | TEXT     | User's full name (required)     |
+| email      | TEXT     | User's email (unique, required) |
+| phone      | TEXT     | Phone number                    |
+| address    | TEXT     | Address                         |
+| avatar     | TEXT     | Avatar/profile image URL        |
+| created_at | DATETIME | Timestamp of creation           |
+| updated_at | DATETIME | Timestamp of last update        |
+| deleted_at | DATETIME | Soft delete timestamp           |
 
 ## 🎯 Architecture Benefits
 
@@ -129,7 +139,7 @@ curl -X DELETE http://localhost:3000/users/1
 2. **Maintainability**: Easy to locate and modify code
 3. **Testability**: Handlers and models can be tested independently
 4. **Scalability**: Easy to add new features and endpoints
-5. **GORM Benefits**: 
+5. **GORM Benefits**:
    - Automatic migrations
    - Soft deletes
    - Query builder
@@ -138,6 +148,7 @@ curl -X DELETE http://localhost:3000/users/1
 ## 🔄 Migration from Raw SQL
 
 This project was refactored from raw SQL to GORM, providing:
+
 - Type-safe database operations
 - Automatic schema migrations
 - Cleaner and more maintainable code

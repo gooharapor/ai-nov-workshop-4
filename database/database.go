@@ -26,7 +26,7 @@ func Connect() error {
 	}
 
 	// Auto migrate the schema
-	err = DB.AutoMigrate(&models.User{})
+	err = DB.AutoMigrate(&models.User{}, &models.Transfer{}, &models.PointLedger{})
 	if err != nil {
 		return err
 	}

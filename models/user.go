@@ -14,6 +14,7 @@ type User struct {
 	Phone     string         `json:"phone"`
 	Address   string         `json:"address"`
 	Avatar    string         `json:"avatar"`
+	Points    int            `gorm:"default:0;not null" json:"points"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
