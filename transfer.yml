@@ -1,0 +1,268 @@
+openapi: 3.1.0
+info:
+  title: LBK Points - Transfer API (Public)
+  version: 1.1.0
+  description: |
+    โอนแต้ม, ดูสถานะ, และค้นประวัติ (public, ไม่ต้องใช้ Bearer Token)
+servers:
+  - url: https://api.example.com
+  - url: http://localhost:8080
+
+tags:
+  - name: Transfers
+
+components:
+  parameters:
+    TransferLookupIdParam:
+      name: id
+      in: path
+      required: true
+      description: >
+        Transfer ID สำหรับค้นหาสถานะ (เท่ากับ Idempotency-Key ที่ระบบสร้างให้ตอน POST /transfers)
+      schema: { type: string, minLength: 8, maxLength: 128 }
+
+    UserIdQuery:
+      name: userId
+      in: query
+      required: true
+      description: แสดงเฉพาะรายการที่เกี่ยวข้องกับ userId (ทั้งโอนออกและรับเข้า)
+      schema: { type: integer, minimum: 1 }
+
+    PageQuery:
+      name: page
+      in: query
+      required: false
+      description: หน้าที่ต้องการ (เริ่มที่ 1)
+      schema: { type: integer, minimum: 1, default: 1 }
+
+    PageSizeQuery:
+      name: pageSize
+      in: query
+      required: false
+      description: จำนวนต่อหน้า (1–200)
+      schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
+
+  schemas:
+    TransferStatus:
+      type: string
+      enum: [pending, processing, completed, failed, cancelled, reversed]
+
+    Transfer:
+      type: object
+      required:
+        - idemKey
+        - fromUserId
+        - toUserId
+        - amount
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        idemKey:
+          type: string
+          description: Idempotency-Key ที่เป็น ID อ้างอิงหลักของรายการโอน
+        transferId:
+          type: integer
+          description: เลขไอดีภายในระบบ (autoincrement) — ออปชัน
+        fromUserId: { type: integer, minimum: 1 }
+        toUserId: { type: integer, minimum: 1 }
+        amount: { type: integer, minimum: 1 }
+        status:
+          $ref: '#/components/schemas/TransferStatus'
+        note:
+          type: string
+          nullable: true
+          maxLength: 512
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        failReason:
+          type: string
+          nullable: true
+
+    TransferCreateRequest:
+      type: object
+      required: [fromUserId, toUserId, amount]
+      properties:
+        fromUserId: { type: integer, minimum: 1 }
+        toUserId: { type: integer, minimum: 1 }
+        amount: { type: integer, minimum: 1 }
+        note:
+          type: string
+          nullable: true
+          maxLength: 512
+
+    TransferCreateResponse:
+      type: object
+      properties:
+        transfer:
+          $ref: '#/components/schemas/Transfer'
+
+    TransferGetResponse:
+      type: object
+      properties:
+        transfer:
+          $ref: '#/components/schemas/Transfer'
+
+    TransferListItem:
+      allOf:
+        - $ref: '#/components/schemas/Transfer'
+
+    TransferListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/TransferListItem' }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1 }
+        total: { type: integer, minimum: 0 }
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string, example: VALIDATION_ERROR }
+        message: { type: string, example: amount must be > 0 }
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+  responses:
+    BadRequest:
+      description: คำขอไม่ถูกต้อง
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: ไม่พบข้อมูล
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: ความขัดแย้ง (เช่น แต้มไม่พอ)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unprocessable:
+      description: ตรวจรูปแบบผ่าน แต่ทำงานต่อไม่ได้ (เช่น โอนให้ตัวเอง)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+paths:
+  /transfers:
+    post:
+      tags: [Transfers]
+      summary: สร้างคำสั่งโอนแต้ม (ระบบจะสร้าง Idempotency-Key ให้)
+      description: |
+        สร้างรายการโอนแต้มแบบอะตอมมิก ระบบจะ generate `idemKey` (Idempotency-Key)
+        และคืนค่าไว้ใช้ติดตามสถานะผ่าน GET /transfers/{id}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TransferCreateRequest' }
+            examples:
+              sample:
+                value: { fromUserId: 101, toUserId: 202, amount: 250, note: "ขอบคุณสำหรับช่วยงาน" }
+      responses:
+        '201':
+          description: สร้างสำเร็จ
+          headers:
+            Idempotency-Key:
+              description: idemKey ที่ระบบสร้างให้ (ใช้เป็น /transfers/{id})
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransferCreateResponse' }
+              examples:
+                success:
+                  value:
+                    transfer:
+                      idemKey: "5d1f8c7a-2b5b-4b1f-9f2a-8f50b0a8d9f3"
+                      transferId: 9876
+                      fromUserId: 101
+                      toUserId: 202
+                      amount: 250
+                      status: completed
+                      note: "ขอบคุณสำหรับช่วยงาน"
+                      createdAt: "2025-10-16T14:03:12Z"
+                      updatedAt: "2025-10-16T14:03:12Z"
+                      completedAt: "2025-10-16T14:03:12Z"
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+    get:
+      tags: [Transfers]
+      summary: ค้น/ดูประวัติการโอน (กรองด้วย userId เท่านั้น)
+      description: แสดงรายการที่ userId เกี่ยวข้อง (ทั้ง sender และ receiver) พร้อมแบ่งหน้า
+      parameters:
+        - $ref: '#/components/parameters/UserIdQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/PageSizeQuery'
+      responses:
+        '200':
+          description: รายการที่พบ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransferListResponse' }
+              examples:
+                page1:
+                  value:
+                    data:
+                      - idemKey: "5d1f8c7a-2b5b-4b1f-9f2a-8f50b0a8d9f3"
+                        transferId: 9876
+                        fromUserId: 101
+                        toUserId: 202
+                        amount: 250
+                        status: completed
+                        createdAt: "2025-10-16T14:03:12Z"
+                        updatedAt: "2025-10-16T14:03:12Z"
+                        completedAt: "2025-10-16T14:03:12Z"
+                      - idemKey: "a8b4f2e0-5562-4f1c-9b62-2a2f2f4c9b10"
+                        transferId: 9901
+                        fromUserId: 303
+                        toUserId: 101
+                        amount: 100
+                        status: completed
+                        createdAt: "2025-10-15T10:00:00Z"
+                        updatedAt: "2025-10-15T10:00:00Z"
+                        completedAt: "2025-10-15T10:00:00Z"
+                    page: 1
+                    pageSize: 20
+                    total: 2
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /transfers/{id}:
+    get:
+      tags: [Transfers]
+      summary: ดูสถานะคำสั่งโอน (ใช้ idemKey เป็น id)
+      parameters:
+        - $ref: '#/components/parameters/TransferLookupIdParam'
+      responses:
+        '200':
+          description: ข้อมูลรายการโอน
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransferGetResponse' }
+              examples:
+                found:
+                  value:
+                    transfer:
+                      idemKey: "5d1f8c7a-2b5b-4b1f-9f2a-8f50b0a8d9f3"
+                      transferId: 9876
+                      fromUserId: 101
+                      toUserId: 202
+                      amount: 250
+                      status: completed
+                      note: "ขอบคุณสำหรับช่วยงาน"
+                      createdAt: "2025-10-16T14:03:12Z"
+                      updatedAt: "2025-10-16T14:03:12Z"
+                      completedAt: "2025-10-16T14:03:12Z"
+        '404': { $ref: '#/components/responses/NotFound' }
